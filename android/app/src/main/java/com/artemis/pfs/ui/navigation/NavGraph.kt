@@ -1,5 +1,6 @@
 package com.artemis.pfs.ui.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,16 +23,22 @@ fun ArtemisNavGraph(viewModel: MainViewModel = viewModel()) {
             onOpenArchive = { uri -> viewModel.openArchive(context, uri) },
             onCreateArchive = { viewModel.navigateTo(Screen.Create) }
         )
-        Screen.Viewer -> ArchiveViewerScreen(
-            state = state,
-            onExtractAll = { uri -> viewModel.extractAll(context, uri) },
-            onBack = { viewModel.navigateTo(Screen.Home) },
-            onRetry = { viewModel.clearMessages() }
-        )
-        Screen.Create -> CreateArchiveScreen(
-            state = state,
-            onCreate = { uri, name, outUri -> viewModel.createArchive(context, uri, name, outUri) },
-            onBack = { viewModel.navigateTo(Screen.Home) }
-        )
+        Screen.Viewer -> {
+            BackHandler { viewModel.navigateTo(Screen.Home) }
+            ArchiveViewerScreen(
+                state = state,
+                onExtractAll = { uri -> viewModel.extractAll(context, uri) },
+                onBack = { viewModel.navigateTo(Screen.Home) },
+                onRetry = { viewModel.clearMessages() }
+            )
+        }
+        Screen.Create -> {
+            BackHandler { viewModel.navigateTo(Screen.Home) }
+            CreateArchiveScreen(
+                state = state,
+                onCreate = { uri, name, outUri -> viewModel.createArchive(context, uri, name, outUri) },
+                onBack = { viewModel.navigateTo(Screen.Home) }
+            )
+        }
     }
 }

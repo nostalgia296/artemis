@@ -58,10 +58,11 @@ fun ArchiveViewerScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { extractLauncher.launch(null) },
-                icon = { Icon(Icons.AutoMirrored.Filled.List, stringResource(R.string.extract)) },
-                text = { Text(stringResource(R.string.extract_all)) }
-            )
+                onClick = { if (!state.isLoading) extractLauncher.launch(null) }
+            ) {
+                Icon(Icons.AutoMirrored.Filled.List, stringResource(R.string.extract))
+                Text(stringResource(R.string.extract_all))
+            }
         }
     ) { padding ->
         if (state.isLoading) {

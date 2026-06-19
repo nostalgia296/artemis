@@ -1,0 +1,41 @@
+<resources>
+    <string name="app_name">Artemis</string>
+    <string name="pfs_archive_manager">PFS 归档管理器</string>
+    <string name="open_archive">打开归档</string>
+    <string name="create_archive">创建归档</string>
+    <string name="extract_all">全部提取</string>
+    <string name="create">创建</string>
+    <string name="output_filename">输出文件名</string>
+    <string name="pf6">PF6</string>
+    <string name="pf8">PF8</string>
+    <string name="back">返回</string>
+    <string name="extract">提取</string>
+    <string name="browse_and_extract">浏览并提取 PFS 归档文件</string>
+    <string name="pack_files">将文件打包为新的 PFS 归档</string>
+    <string name="input_directory">输入目录</string>
+    <string name="output_directory">输出目录</string>
+    <string name="tap_to_select">点击选择…</string>
+
+    <!-- Success messages -->
+    <string name="extracted_files">已提取 %d 个文件</string>
+    <string name="archive_created">归档已创建：%s</string>
+
+    <!-- Error messages -->
+    <string name="cannot_open_file">无法打开所选文件</string>
+    <string name="file_too_small">文件太小，不是有效的 PFS 归档</string>
+    <string name="invalid_file_header">不是有效的 PFS 归档（文件头无效）</string>
+    <string name="empty_folder">所选文件夹为空或无法读取</string>
+    <string name="cannot_create_file">无法在所选输出文件夹中创建文件</string>
+    <string name="cannot_write_file">无法写入输出文件</string>
+    <string name="failed_to_open_archive">打开归档失败：%s</string>
+    <string name="extract_failed">提取失败：%s</string>
+    <string name="create_failed">创建失败：%s</string>
+    <string name="invalid_path">路径无效</string>
+    <string name="file_not_found">文件未找到或无法访问</string>
+    <string name="parse_error">解析错误</string>
+    <string name="not_valid_pfs">不是有效的 PFS 归档</string>
+    <string name="io_error">IO 错误</string>
+    <string name="read_write_failed">读写失败</string>
+    <string name="unknown_error">未知错误</string>
+    <string name="unexpected_error">发生意外错误</string>
+</resources>

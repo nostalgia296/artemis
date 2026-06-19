@@ -1,0 +1,16 @@
+# Native libraries
+*.so
+*.h
+
+# Android build outputs
+android/.gradle/
+android/.kotlin/
+android/app/.cxx/
+android/app/build/
+
+# Local SDK/config paths
+android/local.properties
+
+# Claude Code
+.claude/
+docs/

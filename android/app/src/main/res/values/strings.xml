@@ -1,0 +1,41 @@
+<resources>
+    <string name="app_name">Artemis</string>
+    <string name="pfs_archive_manager">PFS Archive Manager</string>
+    <string name="open_archive">Open Archive</string>
+    <string name="create_archive">Create Archive</string>
+    <string name="extract_all">Extract All</string>
+    <string name="create">Create</string>
+    <string name="output_filename">Output filename</string>
+    <string name="pf6">PF6</string>
+    <string name="pf8">PF8</string>
+    <string name="back">Back</string>
+    <string name="extract">Extract</string>
+    <string name="browse_and_extract">Browse and extract PFS archives</string>
+    <string name="pack_files">Pack files into a new PFS archive</string>
+    <string name="input_directory">Input Directory</string>
+    <string name="output_directory">Output Directory</string>
+    <string name="tap_to_select">Tap to select…</string>
+
+    <!-- Success messages -->
+    <string name="extracted_files">Extracted %d files</string>
+    <string name="archive_created">Archive created: %s</string>
+
+    <!-- Error messages -->
+    <string name="cannot_open_file">Cannot open the selected file</string>
+    <string name="file_too_small">File is too small to be a PFS archive</string>
+    <string name="invalid_file_header">Not a valid PFS archive (invalid file header)</string>
+    <string name="empty_folder">Selected folder is empty or could not be read</string>
+    <string name="cannot_create_file">Cannot create file in the selected output folder</string>
+    <string name="cannot_write_file">Cannot write to the output file</string>
+    <string name="failed_to_open_archive">Failed to open archive: %s</string>
+    <string name="extract_failed">Extract failed: %s</string>
+    <string name="create_failed">Create failed: %s</string>
+    <string name="invalid_path">Invalid path</string>
+    <string name="file_not_found">File not found or inaccessible</string>
+    <string name="parse_error">Parse error</string>
+    <string name="not_valid_pfs">Not a valid PFS archive</string>
+    <string name="io_error">IO error</string>
+    <string name="read_write_failed">Read/write failed</string>
+    <string name="unknown_error">Unknown</string>
+    <string name="unexpected_error">An unexpected error occurred</string>
+</resources>

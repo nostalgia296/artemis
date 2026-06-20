@@ -38,4 +38,9 @@
     <string name="read_write_failed">读写失败</string>
     <string name="unknown_error">未知错误</string>
     <string name="unexpected_error">发生意外错误</string>
+
+    <!-- Permission -->
+    <string name="permission_rationale_title">需要存储权限</string>
+    <string name="permission_rationale_message">Artemis 需要"所有文件访问权限"才能在设备存储上读取和创建归档文件。</string>
+    <string name="grant_permission">授予权限</string>
 </resources>

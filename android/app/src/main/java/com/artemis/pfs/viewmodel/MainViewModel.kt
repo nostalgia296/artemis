@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.artemis.pfs.R
 import com.artemis.pfs.model.PfsEntry
 import com.artemis.pfs.native.PfsBridge
+import com.artemis.pfs.util.isSafDirectoryEntry
+import com.artemis.pfs.util.resolveSafPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -130,9 +132,16 @@ class MainViewModel : ViewModel() {
                     _state.value = _state.value.copy(isLoading = false, error = context.getString(errRes))
                     return@launch
                 }
-                // Copy extracted files to SAF destination
+                // Copy extracted files to destination
                 withContext(Dispatchers.IO) {
-                    copyDirToSaf(context, File(destPath), destUri)
+                    val destRealPath = resolveSafPath(destUri)
+                    if (destRealPath != null) {
+                        Log.d(TAG, "Extracting via File API to: $destRealPath")
+                        File(destPath).copyRecursively(File(destRealPath), overwrite = true)
+                    } else {
+                        Log.d(TAG, "Extracting via SAF fallback")
+                        copyDirToSaf(context, File(destPath), destUri)
+                    }
                 }
                 _state.value = _state.value.copy(
                     isLoading = false,
@@ -153,7 +162,14 @@ class MainViewModel : ViewModel() {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
                 val cacheSrc = withContext(Dispatchers.IO) {
-                    copyTreeToCache(context, srcUri, "create_src")
+                    val srcPath = resolveSafPath(srcUri)
+                    if (srcPath != null) {
+                        Log.d(TAG, "Using File API for path: $srcPath")
+                        copyFileTreeToCache(context, File(srcPath), "create_src")
+                    } else {
+                        Log.d(TAG, "Falling back to SAF copy")
+                        copyTreeToCache(context, srcUri, "create_src")
+                    }
                 }
                 val fileCount = cacheSrc.walkTopDown().count { it.isFile }
                 Log.d(TAG, "Copied $fileCount files to cache: ${cacheSrc.absolutePath}")
@@ -210,6 +226,30 @@ class MainViewModel : ViewModel() {
         return file
     }
 
+    /**
+     * Checks whether a SAF document is a directory by querying its children.
+     * Used as a fallback when the MIME type is null.
+     */
+    private fun isSafDirectory(context: Context, treeUri: Uri, documentId: String): Boolean {
+        val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, documentId)
+        return context.contentResolver.query(
+            childrenUri,
+            arrayOf(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+            null, null, null
+        )?.use { cursor -> cursor.moveToFirst() } ?: false
+    }
+
+    private fun copyFileTreeToCache(context: Context, srcDir: File, dirName: String): File {
+        val dest = File(context.cacheDir, dirName)
+        dest.deleteRecursively()
+        dest.mkdirs()
+        srcDir.copyRecursively(dest, overwrite = true) { file, exception ->
+            Log.w(TAG, "Failed to copy: $file", exception)
+            OnErrorAction.SKIP
+        }
+        return dest
+    }
+
     private fun copyTreeToCache(context: Context, treeUri: Uri, dirName: String): File {
         val dir = File(context.cacheDir, dirName)
         dir.deleteRecursively()
@@ -230,8 +270,7 @@ class MainViewModel : ViewModel() {
                 val childId = cursor.getString(idIdx)
                 val childUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, childId)
                 val mimeType = if (mimeTypeIdx >= 0) cursor.getString(mimeTypeIdx) else null
-                val isDir = mimeType == "vnd.android.document/directory"
-                    || mimeType?.endsWith(".directory") == true
+                val isDir = isSafDirectoryEntry(mimeType) { isSafDirectory(context, treeUri, childId) }
                 if (isDir) {
                     val subDir = File(destDir, name)
                     subDir.mkdirs()

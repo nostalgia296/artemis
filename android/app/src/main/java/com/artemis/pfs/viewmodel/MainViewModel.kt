@@ -137,7 +137,10 @@ class MainViewModel : ViewModel() {
                     val destRealPath = resolveSafPath(destUri)
                     if (destRealPath != null) {
                         Log.d(TAG, "Extracting via File API to: $destRealPath")
-                        File(destPath).copyRecursively(File(destRealPath), overwrite = true)
+                        File(destPath).copyRecursively(File(destRealPath), overwrite = true) { file, exception ->
+                            Log.w(TAG, "Failed to extract: $file", exception)
+                            OnErrorAction.SKIP
+                        }
                     } else {
                         Log.d(TAG, "Extracting via SAF fallback")
                         copyDirToSaf(context, File(destPath), destUri)

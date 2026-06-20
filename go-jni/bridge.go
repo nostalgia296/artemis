@@ -130,7 +130,7 @@ func PFS_Create(cSrcDir *C.char, cOutPath *C.char) (ret C.int) {
 		if relErr != nil {
 			return relErr
 		}
-		archivePath := pfs.OSToPF8Path(filepath.Join(filepath.Base(srcDir), rel))
+		archivePath := pfs.OSToPF8Path(rel)
 		sources = append(sources, pfs.Source{SourcePath: path, ArchivePath: archivePath})
 		return nil
 	})

@@ -150,6 +150,7 @@ class MainViewModel : ViewModel() {
                     isLoading = false,
                     success = context.getString(R.string.extracted_files, _state.value.entries.size)
                 )
+                clearCacheOutputs(context)
             } catch (e: Throwable) {
                 Log.e(TAG, "extractAll failed", e)
                 _state.value = _state.value.copy(
@@ -201,6 +202,7 @@ class MainViewModel : ViewModel() {
                     isLoading = false,
                     success = context.getString(R.string.archive_created, outputName)
                 )
+                clearCacheOutputs(context)
             } catch (e: Throwable) {
                 Log.e(TAG, "createArchive failed", e)
                 _state.value = _state.value.copy(
@@ -211,12 +213,51 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun navigateTo(screen: Screen) {
+    fun navigateTo(screen: Screen, context: Context) {
+        val prev = _state.value
+        if (prev.screen == Screen.Viewer && screen != Screen.Viewer) {
+            val handle = prev.handle
+            if (handle > 0) {
+                try { PfsBridge.closeArchiveSafe(handle) } catch (_: Throwable) {}
+            }
+            _state.value = _state.value.copy(handle = 0)
+            clearCache(context, prev.handle)
+        }
         _state.value = _state.value.copy(screen = screen, error = null, success = null)
     }
 
     fun clearMessages() {
         _state.value = _state.value.copy(error = null, success = null)
+    }
+
+    private fun clearCache(context: Context, currentHandle: Long = 0L) {
+        try {
+            // Clear temp extraction and creation dirs/files regardless of current handle
+            File(context.cacheDir, "extract_dest").deleteRecursively()
+            File(context.cacheDir, "create_src").deleteRecursively()
+            // If no archive is currently open, clear the cached archive file too
+            if (currentHandle == 0L) {
+                File(context.cacheDir, "archive.pfs").delete()
+            }
+            // Clear any leftover output files from archive creation
+            context.cacheDir.listFiles()?.forEach { file ->
+                if (file.extension.equals("pfs", ignoreCase = true)) {
+                    file.delete()
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun clearCacheOutputs(context: Context) {
+        try {
+            File(context.cacheDir, "extract_dest").deleteRecursively()
+            File(context.cacheDir, "create_src").deleteRecursively()
+            context.cacheDir.listFiles()?.forEach { file ->
+                if (file.extension.equals("pfs", ignoreCase = true)) {
+                    file.delete()
+                }
+            }
+        } catch (_: Throwable) {}
     }
 
     private fun copyUriToCache(context: Context, uri: Uri, name: String): File {

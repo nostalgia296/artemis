@@ -21,23 +21,23 @@ fun ArtemisNavGraph(viewModel: MainViewModel = viewModel()) {
         Screen.Home -> HomeScreen(
             state = state,
             onOpenArchive = { uri -> viewModel.openArchive(context, uri) },
-            onCreateArchive = { viewModel.navigateTo(Screen.Create) }
+            onCreateArchive = { viewModel.navigateTo(Screen.Create, context) }
         )
         Screen.Viewer -> {
-            BackHandler { viewModel.navigateTo(Screen.Home) }
+            BackHandler { viewModel.navigateTo(Screen.Home, context) }
             ArchiveViewerScreen(
                 state = state,
                 onExtractAll = { uri -> viewModel.extractAll(context, uri) },
-                onBack = { viewModel.navigateTo(Screen.Home) },
+                onBack = { viewModel.navigateTo(Screen.Home, context) },
                 onRetry = { viewModel.clearMessages() }
             )
         }
         Screen.Create -> {
-            BackHandler { viewModel.navigateTo(Screen.Home) }
+            BackHandler { viewModel.navigateTo(Screen.Home, context) }
             CreateArchiveScreen(
                 state = state,
                 onCreate = { uri, name, outUri -> viewModel.createArchive(context, uri, name, outUri) },
-                onBack = { viewModel.navigateTo(Screen.Home) }
+                onBack = { viewModel.navigateTo(Screen.Home, context) }
             )
         }
     }

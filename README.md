@@ -34,4 +34,4 @@ cd android && ./gradlew assembleDebug
 The APK will be at `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 > note:
-If you are working in a non-Termux environment, please remove `android.aapt2FromMavenOverride=/data/data/com.termux/files/usr/opt/android-sdk/build-tools/35.0.0/aapt2`.
+(not needed)If you are working in a non-Termux environment, please remove `android.aapt2FromMavenOverride=/data/data/com.termux/files/usr/opt/android-sdk/build-tools/35.0.0/aapt2`.

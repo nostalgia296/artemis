@@ -10,6 +10,7 @@ extern char* PFS_ListEntries(long handle);
 extern int PFS_Extract(long handle, char* dest);
 extern int PFS_Create(char* srcDir, char* outPath);
 extern void PFS_Close(long handle);
+extern void PFS_CancelCurrentTask();
 
 JNIEXPORT jlong JNICALL
 Java_com_artemis_pfs_native_PfsBridge_openArchive(
@@ -53,4 +54,10 @@ JNIEXPORT void JNICALL
 Java_com_artemis_pfs_native_PfsBridge_closeArchive(
     JNIEnv *env, jobject thiz, jlong handle) {
     PFS_Close((long)handle);
+}
+
+JNIEXPORT void JNICALL
+Java_com_artemis_pfs_native_PfsBridge_cancelCurrentTask(
+    JNIEnv *env, jobject thiz) {
+    PFS_CancelCurrentTask();
 }

@@ -26,6 +26,7 @@ object PfsBridge {
     external fun extractAll(handle: Long, destPath: String): Int
     external fun createArchive(inputDirPath: String, outputPath: String): Int
     external fun closeArchive(handle: Long)
+    external fun cancelCurrentTask()
 
     fun openArchiveSafe(path: String): Long {
         ensureLoaded()
@@ -54,6 +55,11 @@ object PfsBridge {
         closeArchive(handle)
     }
 
+    fun cancelCurrentTaskSafe() {
+        ensureLoaded()
+        cancelCurrentTask()
+    }
+
     fun getOpenErrorStringRes(handle: Long): Int? {
         if (handle > 0) return null
         return R.string.file_not_found
@@ -65,6 +71,7 @@ object PfsBridge {
             -1 -> R.string.file_not_found
             -2 -> R.string.not_valid_pfs
             -3 -> R.string.read_write_failed
+            -5 -> R.string.operation_cancelled
             else -> R.string.unexpected_error
         }
     }

@@ -2,7 +2,9 @@ package pfs
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -103,5 +105,41 @@ func TestIsUnencryptedPath(t *testing.T) {
 		if got := IsUnencryptedPath(tt.path); got != tt.want {
 			t.Errorf("IsUnencryptedPath(%q) = %v, want %v", tt.path, got, tt.want)
 		}
+	}
+}
+
+func TestPackContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := PackContext(ctx, filepath.Join(t.TempDir(), "out.pfs"), nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("PackContext error = %v, want context.Canceled", err)
+	}
+}
+
+func TestExtractAllContextCanceled(t *testing.T) {
+	dir := t.TempDir()
+	srcFile := filepath.Join(dir, "hello.txt")
+	if err := os.WriteFile(srcFile, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	archivePath := filepath.Join(dir, "test.pfs")
+	if err := Pack(archivePath, []Source{{SourcePath: srcFile, ArchivePath: "hello.txt"}}); err != nil {
+		t.Fatalf("Pack: %v", err)
+	}
+	r, err := OpenReader(archivePath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer r.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err = r.ExtractAllContext(ctx, filepath.Join(dir, "out"))
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("ExtractAllContext error = %v, want context.Canceled", err)
 	}
 }

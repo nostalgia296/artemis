@@ -2,6 +2,7 @@ package pfs
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"io"
 	"os"
@@ -21,9 +22,19 @@ type fileEntry struct {
 
 // Pack creates a PF8 archive at outPath from the given sources.
 func Pack(outPath string, sources []Source) error {
+	return PackContext(context.Background(), outPath, sources)
+}
 
+// PackContext creates a PF8 archive at outPath and stops when ctx is canceled.
+func PackContext(ctx context.Context, outPath string, sources []Source) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	entries := make([]fileEntry, 0, len(sources))
 	for _, s := range sources {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		info, err := os.Stat(s.SourcePath)
 		if err != nil {
 			return &Error{"stat", err}
@@ -57,7 +68,10 @@ func Pack(outPath string, sources []Source) error {
 	}
 
 	for _, e := range entries {
-		if err := writeFileData(f, e.src, e.name, e.size, key[:]); err != nil {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := writeFileDataContext(ctx, f, e.src, e.name, e.size, key[:]); err != nil {
 			return err
 		}
 	}
@@ -94,7 +108,7 @@ func buildIndex(entries []fileEntry, dataOffsetBase uint32) []byte {
 	return idx.Bytes()
 }
 
-func writeFileData(dst *os.File, srcPath, archiveName string, size uint32, key []byte) error {
+func writeFileDataContext(ctx context.Context, dst *os.File, srcPath, archiveName string, size uint32, key []byte) error {
 	src, err := os.Open(srcPath)
 	if err != nil {
 		return &Error{"open_src", err}
@@ -106,6 +120,9 @@ func writeFileData(dst *os.File, srcPath, archiveName string, size uint32, key [
 	var written uint32
 
 	for written < size {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		toRead := bufferSize
 		remaining := size - written
 		if uint32(toRead) > remaining {

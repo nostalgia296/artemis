@@ -5,6 +5,7 @@ package main
 */
 import "C"
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -17,9 +18,16 @@ import (
 // Handle registry: maps int64 handles to open Readers.
 var (
 	mu      sync.Mutex
-	handles = make(map[int64]*pfs.Reader)
+	handles       = make(map[int64]*pfs.Reader)
 	nextH   int64 = 1
+
+	taskMu      sync.Mutex
+	currentTask *taskControl
 )
+
+type taskControl struct {
+	cancel context.CancelFunc
+}
 
 func register(r *pfs.Reader) int64 {
 	mu.Lock()
@@ -41,6 +49,37 @@ func remove(h int64) {
 	mu.Lock()
 	defer mu.Unlock()
 	delete(handles, h)
+}
+
+func beginTask() (context.Context, *taskControl) {
+	ctx, cancel := context.WithCancel(context.Background())
+	task := &taskControl{cancel: cancel}
+	taskMu.Lock()
+	if currentTask != nil {
+		currentTask.cancel()
+	}
+	currentTask = task
+	taskMu.Unlock()
+	return ctx, task
+}
+
+func endTask(task *taskControl) {
+	taskMu.Lock()
+	if currentTask == task {
+		currentTask = nil
+	}
+	taskMu.Unlock()
+	task.cancel()
+}
+
+//export PFS_CancelCurrentTask
+func PFS_CancelCurrentTask() {
+	taskMu.Lock()
+	task := currentTask
+	taskMu.Unlock()
+	if task != nil {
+		task.cancel()
+	}
 }
 
 //export PFS_Open
@@ -104,8 +143,13 @@ func PFS_Extract(handle C.long, cDest *C.char) (ret C.int) {
 	if !ok {
 		return -4
 	}
+	ctx, cancel := beginTask()
+	defer endTask(cancel)
 	dest := C.GoString(cDest)
-	if err := r.ExtractAll(dest); err != nil {
+	if err := r.ExtractAllContext(ctx, dest); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return -5
+		}
 		return -3
 	}
 	return 0
@@ -120,9 +164,14 @@ func PFS_Create(cSrcDir *C.char, cOutPath *C.char) (ret C.int) {
 	}()
 	srcDir := C.GoString(cSrcDir)
 	outPath := C.GoString(cOutPath)
+	ctx, cancel := beginTask()
+	defer endTask(cancel)
 
 	var sources []pfs.Source
 	err := filepath.WalkDir(srcDir, func(path string, d os.DirEntry, err error) error {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
 		if err != nil || d.IsDir() {
 			return err
 		}
@@ -135,9 +184,15 @@ func PFS_Create(cSrcDir *C.char, cOutPath *C.char) (ret C.int) {
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return -5
+		}
 		return -3
 	}
-	if err := pfs.Pack(outPath, sources); err != nil {
+	if err := pfs.PackContext(ctx, outPath, sources); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return -5
+		}
 		return -3
 	}
 	return 0

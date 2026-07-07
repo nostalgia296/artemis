@@ -1,6 +1,7 @@
 package pfs
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -67,15 +68,26 @@ func (r *Reader) List(w io.Writer, long bool) {
 
 // ExtractAll extracts every entry into dst.
 func (r *Reader) ExtractAll(dst string) error {
+	return r.ExtractAllContext(context.Background(), dst)
+}
+
+// ExtractAllContext extracts every entry into dst and stops when ctx is canceled.
+func (r *Reader) ExtractAllContext(ctx context.Context, dst string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	for i := range r.entries {
-		if err := r.extractOne(dst, &r.entries[i]); err != nil {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := r.extractOneContext(ctx, dst, &r.entries[i]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *Reader) extractOne(dst string, e *Entry) error {
+func (r *Reader) extractOneContext(ctx context.Context, dst string, e *Entry) error {
 	outPath := PF8PathToOS(e.Name)
 	if dst != "" {
 		outPath = dst + "/" + outPath
@@ -96,6 +108,9 @@ func (r *Reader) extractOne(dst string, e *Entry) error {
 	var logical int64
 
 	for remaining > 0 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		chunk := int64(bufferSize)
 		if chunk > remaining {
 			chunk = remaining

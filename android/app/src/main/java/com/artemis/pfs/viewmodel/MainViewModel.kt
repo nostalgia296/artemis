@@ -10,12 +10,18 @@ import com.artemis.pfs.model.PfsEntry
 import com.artemis.pfs.native.PfsBridge
 import com.artemis.pfs.util.isSafDirectoryEntry
 import com.artemis.pfs.util.resolveSafPath
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 
 private const val TAG = "MainViewModel"
 
@@ -35,9 +41,12 @@ enum class Screen { Home, Viewer, Create }
 class MainViewModel : ViewModel() {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state
+    private var activeTaskJob: Job? = null
 
     override fun onCleared() {
         super.onCleared()
+        activeTaskJob?.cancel()
+        try { PfsBridge.cancelCurrentTaskSafe() } catch (_: Throwable) {}
         val handle = _state.value.handle
         if (handle > 0) {
             try { PfsBridge.closeArchiveSafe(handle) } catch (_: Throwable) {}
@@ -116,7 +125,8 @@ class MainViewModel : ViewModel() {
     fun extractAll(context: Context, destUri: Uri) {
         val handle = _state.value.handle
         if (handle == 0L) return
-        viewModelScope.launch {
+        cancelExistingTask()
+        activeTaskJob = viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
                 val destPath = withContext(Dispatchers.IO) {
@@ -137,10 +147,7 @@ class MainViewModel : ViewModel() {
                     val destRealPath = resolveSafPath(destUri)
                     if (destRealPath != null) {
                         Log.d(TAG, "Extracting via File API to: $destRealPath")
-                        File(destPath).copyRecursively(File(destRealPath), overwrite = true) { file, exception ->
-                            Log.w(TAG, "Failed to extract: $file", exception)
-                            OnErrorAction.SKIP
-                        }
+                        copyLocalTree(File(destPath), File(destRealPath))
                     } else {
                         Log.d(TAG, "Extracting via SAF fallback")
                         copyDirToSaf(context, File(destPath), destUri)
@@ -151,18 +158,25 @@ class MainViewModel : ViewModel() {
                     success = context.getString(R.string.extracted_files, _state.value.entries.size)
                 )
                 clearCacheOutputs(context)
+            } catch (e: CancellationException) {
+                Log.d(TAG, "extractAll cancelled")
             } catch (e: Throwable) {
                 Log.e(TAG, "extractAll failed", e)
                 _state.value = _state.value.copy(
                     isLoading = false,
                     error = (e as? Exception)?.message ?: context.getString(R.string.extract_failed, e.javaClass.simpleName)
                 )
+            } finally {
+                if (activeTaskJob === coroutineContext[Job]) {
+                    activeTaskJob = null
+                }
             }
         }
     }
 
     fun createArchive(context: Context, srcUri: Uri, outputName: String, outputDirUri: Uri) {
-        viewModelScope.launch {
+        cancelExistingTask()
+        activeTaskJob = viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
                 val cacheSrc = withContext(Dispatchers.IO) {
@@ -203,14 +217,32 @@ class MainViewModel : ViewModel() {
                     success = context.getString(R.string.archive_created, outputName)
                 )
                 clearCacheOutputs(context)
+            } catch (e: CancellationException) {
+                Log.d(TAG, "createArchive cancelled")
             } catch (e: Throwable) {
                 Log.e(TAG, "createArchive failed", e)
                 _state.value = _state.value.copy(
                     isLoading = false,
                     error = (e as? Exception)?.message ?: context.getString(R.string.create_failed, e.javaClass.simpleName)
                 )
+            } finally {
+                if (activeTaskJob === coroutineContext[Job]) {
+                    activeTaskJob = null
+                }
             }
         }
+    }
+
+    fun cancelActiveTask(context: Context) {
+        cancelExistingTask()
+        _state.value = _state.value.copy(isLoading = false, error = null, success = null)
+        clearCacheOutputs(context)
+    }
+
+    private fun cancelExistingTask() {
+        activeTaskJob?.cancel()
+        activeTaskJob = null
+        try { PfsBridge.cancelCurrentTaskSafe() } catch (_: Throwable) {}
     }
 
     fun navigateTo(screen: Screen, context: Context) {
@@ -283,18 +315,15 @@ class MainViewModel : ViewModel() {
         )?.use { cursor -> cursor.moveToFirst() } ?: false
     }
 
-    private fun copyFileTreeToCache(context: Context, srcDir: File, dirName: String): File {
+    private suspend fun copyFileTreeToCache(context: Context, srcDir: File, dirName: String): File {
         val dest = File(context.cacheDir, dirName)
         dest.deleteRecursively()
         dest.mkdirs()
-        srcDir.copyRecursively(dest, overwrite = true) { file, exception ->
-            Log.w(TAG, "Failed to copy: $file", exception)
-            OnErrorAction.SKIP
-        }
+        copyLocalTree(srcDir, dest)
         return dest
     }
 
-    private fun copyTreeToCache(context: Context, treeUri: Uri, dirName: String): File {
+    private suspend fun copyTreeToCache(context: Context, treeUri: Uri, dirName: String): File {
         val dir = File(context.cacheDir, dirName)
         dir.deleteRecursively()
         dir.mkdirs()
@@ -302,7 +331,7 @@ class MainViewModel : ViewModel() {
         return dir
     }
 
-    private fun copyTreeChildrenRecursive(context: Context, treeUri: Uri, destDir: File) {
+    private suspend fun copyTreeChildrenRecursive(context: Context, treeUri: Uri, destDir: File) {
         val docId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
         val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, docId)
         context.contentResolver.query(childrenUri, null, null, null, null)?.use { cursor ->
@@ -310,6 +339,7 @@ class MainViewModel : ViewModel() {
             val idIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
             val mimeTypeIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
             while (cursor.moveToNext()) {
+                currentCoroutineContext().ensureActive()
                 val name = cursor.getString(nameIdx)
                 val childId = cursor.getString(idIdx)
                 val childUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, childId)
@@ -323,8 +353,10 @@ class MainViewModel : ViewModel() {
                     val outFile = File(destDir, name)
                     try {
                         context.contentResolver.openInputStream(childUri)?.use { input ->
-                            outFile.outputStream().use { output -> input.copyTo(output) }
+                            outFile.outputStream().use { output -> copyStreamCancellable(input, output) }
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to copy file: $name", e)
                     }
@@ -333,12 +365,13 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    private fun copyDirToSaf(context: Context, srcDir: File, destUri: Uri) {
+    private suspend fun copyDirToSaf(context: Context, srcDir: File, destUri: Uri) {
         // Convert tree URI to document URI for SAF operations
         val rootDocId = android.provider.DocumentsContract.getTreeDocumentId(destUri)
         val rootDocUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(destUri, rootDocId)
 
-        srcDir.walkTopDown().filter { it.isFile }.forEach { file ->
+        for (file in srcDir.walkTopDown().filter { it.isFile }) {
+            currentCoroutineContext().ensureActive()
             val relativePath = file.relativeTo(srcDir)
             val parentParts = relativePath.parentFile?.path
             // Navigate or create subdirectories in SAF destination
@@ -355,7 +388,7 @@ class MainViewModel : ViewModel() {
                 context.contentResolver, currentUri, mimeType, file.name
             )?.let { destDocUri ->
                 context.contentResolver.openOutputStream(destDocUri)?.use { output ->
-                    file.inputStream().use { input -> input.copyTo(output) }
+                    file.inputStream().use { input -> copyStreamCancellable(input, output) }
                 }
             }
         }
@@ -387,7 +420,7 @@ class MainViewModel : ViewModel() {
         ) ?: parentUri
     }
 
-    private fun copyFileToSaf(context: Context, srcFile: File, destDirUri: Uri, fileName: String) {
+    private suspend fun copyFileToSaf(context: Context, srcFile: File, destDirUri: Uri, fileName: String) {
         val safeName = fileName.substringAfterLast('/').substringAfterLast('\\')
         Log.d(TAG, "copyFileToSaf: src=${srcFile.absolutePath} (${srcFile.length()} bytes), dest=$destDirUri, name=$safeName")
         // Convert tree URI to document URI for createDocument
@@ -402,8 +435,39 @@ class MainViewModel : ViewModel() {
             throw IllegalStateException(context.getString(R.string.cannot_create_file))
         }
         context.contentResolver.openOutputStream(destDocUri)?.use { output ->
-            srcFile.inputStream().use { input -> input.copyTo(output) }
+            srcFile.inputStream().use { input -> copyStreamCancellable(input, output) }
         } ?: throw IllegalStateException(context.getString(R.string.cannot_write_file))
         Log.d(TAG, "copyFileToSaf: done")
+    }
+
+    private suspend fun copyLocalTree(srcDir: File, destDir: File) {
+        for (source in srcDir.walkTopDown()) {
+            currentCoroutineContext().ensureActive()
+            val target = File(destDir, source.relativeTo(srcDir).path)
+            if (source.isDirectory) {
+                target.mkdirs()
+                continue
+            }
+            try {
+                target.parentFile?.mkdirs()
+                source.inputStream().use { input ->
+                    target.outputStream().use { output -> copyStreamCancellable(input, output) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to copy: $source", e)
+            }
+        }
+    }
+
+    private suspend fun copyStreamCancellable(input: InputStream, output: OutputStream) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            val read = input.read(buffer)
+            if (read < 0) break
+            output.write(buffer, 0, read)
+        }
     }
 }

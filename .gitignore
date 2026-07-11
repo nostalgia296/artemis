@@ -14,3 +14,9 @@ android/local.properties
 # Claude Code
 .claude/
 docs/
+
+# Web frontend
+web/node_modules/
+web/dist/
+web/public/artemis.wasm
+web/public/wasm_exec.js

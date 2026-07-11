@@ -1,6 +1,7 @@
 package pfs
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -14,7 +15,8 @@ var OnProgress func(current, total int)
 
 // Reader opens a PFS archive for reading.
 type Reader struct {
-	f       *os.File
+	ra      io.ReaderAt
+	closer  io.Closer // optional; closed by Close when non-nil
 	format  Format
 	entries []Entry
 	key     []byte // nil for PF6
@@ -26,21 +28,33 @@ func OpenReader(path string) (*Reader, error) {
 	if err != nil {
 		return nil, &Error{"open", err}
 	}
-	fmt_, entries, err := ParseEntries(f)
+	r, err := openReader(f)
 	if err != nil {
 		f.Close()
+		return nil, err
+	}
+	r.closer = f
+	return r, nil
+}
+
+// OpenReaderFromBytes parses a PFS archive fully held in memory.
+func OpenReaderFromBytes(data []byte) (*Reader, error) {
+	return openReader(bytes.NewReader(data))
+}
+
+func openReader(ra io.ReaderAt) (*Reader, error) {
+	fmt_, entries, err := ParseEntries(ra)
+	if err != nil {
 		return nil, &Error{"parse", err}
 	}
-	r := &Reader{f: f, format: fmt_, entries: entries}
+	r := &Reader{ra: ra, format: fmt_, entries: entries}
 	if fmt_.IsPF8() {
-		hsz, err := HeaderSize(f)
+		hsz, err := HeaderSize(ra)
 		if err != nil {
-			f.Close()
 			return nil, &Error{"header_size", err}
 		}
 		idxBuf := make([]byte, hsz)
-		if _, err := f.ReadAt(idxBuf, offIndexCount); err != nil {
-			f.Close()
+		if _, err := ra.ReadAt(idxBuf, offIndexCount); err != nil {
 			return nil, &Error{"read_index", err}
 		}
 		key := GenerateKey(idxBuf)
@@ -55,8 +69,13 @@ func (r *Reader) Format() Format { return r.format }
 // Entries returns the parsed file entries.
 func (r *Reader) Entries() []Entry { return r.entries }
 
-// Close closes the underlying file.
-func (r *Reader) Close() error { return r.f.Close() }
+// Close closes the underlying resource when it was opened from a path.
+func (r *Reader) Close() error {
+	if r.closer != nil {
+		return r.closer.Close()
+	}
+	return nil
+}
 
 // List writes a summary of entries to w.
 func (r *Reader) List(w io.Writer, long bool) {
@@ -67,6 +86,24 @@ func (r *Reader) List(w io.Writer, long bool) {
 			fmt.Fprintln(w, PF8PathToOS(e.Name))
 		}
 	}
+}
+
+// ReadEntry decrypts and returns the full content of one entry.
+func (r *Reader) ReadEntry(e *Entry) ([]byte, error) {
+	if e == nil {
+		return nil, &Error{"read_entry", fmt.Errorf("nil entry")}
+	}
+	out := make([]byte, e.Size)
+	if e.Size == 0 {
+		return out, nil
+	}
+	if _, err := r.ra.ReadAt(out, int64(e.Offset)); err != nil {
+		return nil, &Error{"read_data", err}
+	}
+	if r.key != nil && !IsUnencryptedPath(e.Name) {
+		ApplyCipher(out, r.key, 0)
+	}
+	return out, nil
 }
 
 // ExtractAll extracts every entry into dst.
@@ -125,7 +162,7 @@ func (r *Reader) extractOneContext(ctx context.Context, dst string, e *Entry) er
 		if chunk > remaining {
 			chunk = remaining
 		}
-		if _, err := r.f.ReadAt(buf[:chunk], offset); err != nil {
+		if _, err := r.ra.ReadAt(buf[:chunk], offset); err != nil {
 			return &Error{"read_data", err}
 		}
 		if needCipher {

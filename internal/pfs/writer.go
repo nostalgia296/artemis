@@ -14,8 +14,15 @@ type Source struct {
 	ArchivePath string
 }
 
+// MemorySource is an in-memory file used when packing without a filesystem.
+type MemorySource struct {
+	ArchivePath string
+	Data        []byte
+}
+
 type fileEntry struct {
-	src  string
+	src  string // empty when packing from memory
+	data []byte // non-nil when packing from memory
 	name string
 	size uint32
 }
@@ -41,7 +48,63 @@ func PackContext(ctx context.Context, outPath string, sources []Source) error {
 		}
 		entries = append(entries, fileEntry{src: s.SourcePath, name: s.ArchivePath, size: uint32(info.Size())})
 	}
+	return packEntries(ctx, outPath, entries)
+}
 
+// PackBytes builds a PF8 archive entirely in memory and returns its bytes.
+func PackBytes(sources []MemorySource) ([]byte, error) {
+	return PackBytesContext(context.Background(), sources)
+}
+
+// PackBytesContext builds a PF8 archive in memory and stops when ctx is canceled.
+func PackBytesContext(ctx context.Context, sources []MemorySource) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	entries := make([]fileEntry, 0, len(sources))
+	for _, s := range sources {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		entries = append(entries, fileEntry{
+			data: s.Data,
+			name: s.ArchivePath,
+			size: uint32(len(s.Data)),
+		})
+	}
+
+	// Two-pass build for correct absolute offsets.
+	indexBuf := buildIndex(entries, 0)
+	headerSize := uint32(3 + 4 + len(indexBuf))
+	indexBuf = buildIndex(entries, headerSize)
+	indexSize := uint32(len(indexBuf))
+	key := GenerateKey(indexBuf)
+
+	var out bytes.Buffer
+	out.Grow(int(headerSize) + totalDataSize(entries))
+	out.Write([]byte("pf8"))
+	_ = binary.Write(&out, binary.LittleEndian, indexSize)
+	out.Write(indexBuf)
+
+	total := len(entries)
+	if OnProgress != nil {
+		OnProgress(0, total)
+	}
+	for i, e := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if err := writeMemoryData(&out, e, key[:]); err != nil {
+			return nil, err
+		}
+		if OnProgress != nil {
+			OnProgress(i+1, total)
+		}
+	}
+	return out.Bytes(), nil
+}
+
+func packEntries(ctx context.Context, outPath string, entries []fileEntry) error {
 	// Two-pass build: first with dummy offsets to measure index size,
 	// then with real absolute offsets once we know where the data area starts.
 	// Header = magic(3) + index_size(4) + indexBuf.
@@ -75,7 +138,11 @@ func PackContext(ctx context.Context, outPath string, sources []Source) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := writeFileDataContext(ctx, f, e.src, e.name, e.size, key[:]); err != nil {
+		if e.data != nil {
+			if err := writeMemoryData(f, e, key[:]); err != nil {
+				return err
+			}
+		} else if err := writeFileDataContext(ctx, f, e.src, e.name, e.size, key[:]); err != nil {
 			return err
 		}
 		if OnProgress != nil {
@@ -83,6 +150,14 @@ func PackContext(ctx context.Context, outPath string, sources []Source) error {
 		}
 	}
 	return nil
+}
+
+func totalDataSize(entries []fileEntry) int {
+	var n int
+	for _, e := range entries {
+		n += int(e.size)
+	}
+	return n
 }
 
 // buildIndex constructs the index buffer with dataOffsetBase added to each entry's offset.
@@ -113,6 +188,23 @@ func buildIndex(entries []fileEntry, dataOffsetBase uint32) []byte {
 	binary.Write(&idx, binary.LittleEndian, uint32(cursor))
 
 	return idx.Bytes()
+}
+
+func writeMemoryData(dst io.Writer, e fileEntry, key []byte) error {
+	data := e.data
+	if data == nil {
+		return &Error{"write_data", io.ErrUnexpectedEOF}
+	}
+	// Copy so we never mutate the caller's buffer.
+	buf := make([]byte, len(data))
+	copy(buf, data)
+	if !IsUnencryptedPath(e.name) {
+		ApplyCipher(buf, key, 0)
+	}
+	if _, err := dst.Write(buf); err != nil {
+		return &Error{"write_data", err}
+	}
+	return nil
 }
 
 func writeFileDataContext(ctx context.Context, dst *os.File, srcPath, archiveName string, size uint32, key []byte) error {

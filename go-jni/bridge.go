@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/nostalgia296/artemis/internal/pfs"
 )
@@ -23,7 +24,18 @@ var (
 
 	taskMu      sync.Mutex
 	currentTask *taskControl
+
+	globalProgress int32
 )
+
+func init() {
+	pfs.OnProgress = func(current, total int) {
+		if total > 0 {
+			pct := int32((current * 100) / total)
+			atomic.StoreInt32(&globalProgress, pct)
+		}
+	}
+}
 
 type taskControl struct {
 	cancel context.CancelFunc
@@ -52,6 +64,7 @@ func remove(h int64) {
 }
 
 func beginTask() (context.Context, *taskControl) {
+	atomic.StoreInt32(&globalProgress, 0)
 	ctx, cancel := context.WithCancel(context.Background())
 	task := &taskControl{cancel: cancel}
 	taskMu.Lock()
@@ -80,6 +93,11 @@ func PFS_CancelCurrentTask() {
 	if task != nil {
 		task.cancel()
 	}
+}
+
+//export PFS_GetProgress
+func PFS_GetProgress() C.int {
+	return C.int(atomic.LoadInt32(&globalProgress))
 }
 
 //export PFS_Open

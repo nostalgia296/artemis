@@ -9,6 +9,9 @@ import (
 
 const bufferSize = 4 * 1024 * 1024 // 4 MiB
 
+// OnProgress is a global callback to report progress.
+var OnProgress func(current, total int)
+
 // Reader opens a PFS archive for reading.
 type Reader struct {
 	f       *os.File
@@ -76,12 +79,19 @@ func (r *Reader) ExtractAllContext(ctx context.Context, dst string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	total := len(r.entries)
+	if OnProgress != nil {
+		OnProgress(0, total)
+	}
 	for i := range r.entries {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if err := r.extractOneContext(ctx, dst, &r.entries[i]); err != nil {
 			return err
+		}
+		if OnProgress != nil {
+			OnProgress(i+1, total)
 		}
 	}
 	return nil

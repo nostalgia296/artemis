@@ -20,13 +20,13 @@ object PfsBridge {
         loadError?.let { throw IllegalStateException("Native library not available: $it") }
     }
 
-    // Returns handle (positive) on success, negative on error
     external fun openArchive(path: String): Long
     external fun listEntries(handle: Long): String
     external fun extractAll(handle: Long, destPath: String): Int
     external fun createArchive(inputDirPath: String, outputPath: String): Int
     external fun closeArchive(handle: Long)
     external fun cancelCurrentTask()
+    external fun getProgress(): Int
 
     fun openArchiveSafe(path: String): Long {
         ensureLoaded()
@@ -58,6 +58,11 @@ object PfsBridge {
     fun cancelCurrentTaskSafe() {
         ensureLoaded()
         cancelCurrentTask()
+    }
+
+    fun getProgressSafe(): Int {
+        ensureLoaded()
+        return getProgress()
     }
 
     fun getOpenErrorStringRes(handle: Long): Int? {

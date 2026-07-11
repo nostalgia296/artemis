@@ -40,7 +40,7 @@ import {
   pf8ToDisplayPath,
 } from "./lib/format";
 import { getApi, initWasm, type OpenResult, type PackFile, type PfsEntry } from "./lib/wasm";
-import { buildZip } from "./lib/zip";
+import { saveZip, type ZipSource } from "./lib/zip";
 
 type Tab = "extract" | "create";
 type ToastState = { message: string; tone?: "info" | "error" | "success" } | null;
@@ -211,27 +211,54 @@ export default function App() {
     const h = handle();
     const meta = archiveMeta();
     if (h == null || !meta) return;
+
+    const indices =
+      mode === "all" || selected().size === 0 || selected().size === meta.entries.length
+        ? meta.entries.map((_, i) => i)
+        : [...selected()].sort((a, b) => a - b);
+
+    if (indices.length === 0) return;
+
     setBusy(true);
     setProgress(0);
     try {
-      let files;
-      if (mode === "all" || selected().size === 0 || selected().size === meta.entries.length) {
-        files = await getApi().extractAll(h);
-      } else {
-        const idxs = [...selected()].sort((a, b) => a - b);
-        files = [];
-        for (let i = 0; i < idxs.length; i++) {
-          const data = await getApi().extractEntry(h, idxs[i]);
-          files.push({ name: meta.entries[idxs[i]].name, data });
-          setProgress(Math.round(((i + 1) / idxs.length) * 100));
+      const total = indices.length;
+      // Extract one entry at a time and stream into ZIP so we never hold
+      // extractAll() + zipSync() peak memory (all files + full archive).
+      async function* sources(): AsyncGenerator<ZipSource> {
+        for (let i = 0; i < indices.length; i++) {
+          const idx = indices[i];
+          const data = await getApi().extractEntry(h!, idx);
+          // Progress: 0–90% for extract+compress, last 10% is finalize/write.
+          setProgress(Math.min(90, Math.round(((i + 1) / total) * 90)));
+          yield { name: meta!.entries[idx].name, data };
+          // Drop reference so GC can reclaim each file after it is zipped.
         }
       }
-      const zip = buildZip(files);
+
       const base = (archiveName() ?? "archive").replace(/\.pfs(\.\d+)?$/i, "");
-      downloadBytes(zip, `${base || "extract"}.zip`, "application/zip");
-      showToast(`已打包下载 ${files.length} 个文件`, "success");
+      const filename = `${base || "extract"}.zip`;
+      const how = await saveZip(sources(), {
+        filename,
+        level: 1,
+        total,
+        onProgress: (done, n) => {
+          setProgress(Math.min(99, Math.round((done / Math.max(n, 1)) * 90)));
+        },
+      });
+      setProgress(100);
+      showToast(
+        how === "file-picker"
+          ? `已保存 ZIP（${total} 个文件）`
+          : `已打包下载 ${total} 个文件`,
+        "success",
+      );
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), "error");
+      if (e instanceof DOMException && e.name === "AbortError") {
+        showToast("已取消保存", "info");
+      } else {
+        showToast(e instanceof Error ? e.message : String(e), "error");
+      }
     } finally {
       setBusy(false);
       setProgress(0);

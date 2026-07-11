@@ -31,6 +31,7 @@ data class UiState(
     val archiveName: String = "",
     val handle: Long = 0,
     val isLoading: Boolean = false,
+    val progress: Int = 0,
     val error: String? = null,
     val success: String? = null,
     val inputDirUri: Uri? = null
@@ -127,7 +128,14 @@ class MainViewModel : ViewModel() {
         if (handle == 0L) return
         cancelExistingTask()
         activeTaskJob = viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
+            _state.value = _state.value.copy(isLoading = true, error = null, progress = 0)
+            val progressJob = launch {
+                while (true) {
+                    kotlinx.coroutines.delay(100)
+                    val p = PfsBridge.getProgressSafe()
+                    _state.value = _state.value.copy(progress = p)
+                }
+            }
             try {
                 val destPath = withContext(Dispatchers.IO) {
                     val dir = File(context.cacheDir, "extract_dest")
@@ -137,6 +145,7 @@ class MainViewModel : ViewModel() {
                 val code = withContext(Dispatchers.IO) {
                     PfsBridge.extractAllSafe(handle, destPath)
                 }
+                progressJob.cancel()
                 val errRes = PfsBridge.getErrorStringRes(code)
                 if (errRes != null) {
                     _state.value = _state.value.copy(isLoading = false, error = context.getString(errRes))
@@ -167,6 +176,7 @@ class MainViewModel : ViewModel() {
                     error = (e as? Exception)?.message ?: context.getString(R.string.extract_failed, e.javaClass.simpleName)
                 )
             } finally {
+                progressJob.cancel()
                 if (activeTaskJob === coroutineContext[Job]) {
                     activeTaskJob = null
                 }
@@ -177,7 +187,14 @@ class MainViewModel : ViewModel() {
     fun createArchive(context: Context, srcUri: Uri, outputName: String, outputDirUri: Uri) {
         cancelExistingTask()
         activeTaskJob = viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
+            _state.value = _state.value.copy(isLoading = true, error = null, progress = 0)
+            val progressJob = launch {
+                while (true) {
+                    kotlinx.coroutines.delay(100)
+                    val p = PfsBridge.getProgressSafe()
+                    _state.value = _state.value.copy(progress = p)
+                }
+            }
             try {
                 val cacheSrc = withContext(Dispatchers.IO) {
                     val srcPath = resolveSafPath(srcUri)
@@ -192,6 +209,7 @@ class MainViewModel : ViewModel() {
                 val fileCount = cacheSrc.walkTopDown().count { it.isFile }
                 Log.d(TAG, "Copied $fileCount files to cache: ${cacheSrc.absolutePath}")
                 if (fileCount == 0) {
+                    progressJob.cancel()
                     _state.value = _state.value.copy(
                         isLoading = false,
                         error = context.getString(R.string.empty_folder)
@@ -203,6 +221,7 @@ class MainViewModel : ViewModel() {
                     PfsBridge.createArchiveSafe(cacheSrc.absolutePath, outFile.absolutePath)
                 }
                 Log.d(TAG, "createArchive returned code=$code")
+                progressJob.cancel()
                 val errRes = PfsBridge.getErrorStringRes(code)
                 if (errRes != null) {
                     _state.value = _state.value.copy(isLoading = false, error = context.getString(errRes))
@@ -226,6 +245,7 @@ class MainViewModel : ViewModel() {
                     error = (e as? Exception)?.message ?: context.getString(R.string.create_failed, e.javaClass.simpleName)
                 )
             } finally {
+                progressJob.cancel()
                 if (activeTaskJob === coroutineContext[Job]) {
                     activeTaskJob = null
                 }

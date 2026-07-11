@@ -67,12 +67,19 @@ func PackContext(ctx context.Context, outPath string, sources []Source) error {
 		return err
 	}
 
-	for _, e := range entries {
+	total := len(entries)
+	if OnProgress != nil {
+		OnProgress(0, total)
+	}
+	for i, e := range entries {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if err := writeFileDataContext(ctx, f, e.src, e.name, e.size, key[:]); err != nil {
 			return err
+		}
+		if OnProgress != nil {
+			OnProgress(i+1, total)
 		}
 	}
 	return nil

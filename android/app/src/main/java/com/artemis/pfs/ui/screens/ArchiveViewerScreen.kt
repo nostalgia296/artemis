@@ -67,7 +67,16 @@ fun ArchiveViewerScreen(
     ) { padding ->
         if (state.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    if (state.progress > 0) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "${state.progress}%",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         } else {
             LazyColumn(

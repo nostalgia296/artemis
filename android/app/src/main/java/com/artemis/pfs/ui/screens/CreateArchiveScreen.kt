@@ -109,10 +109,19 @@ fun CreateArchiveScreen(
                 enabled = selectedDir != null && outputDir != null && !state.isLoading
             ) {
                 if (state.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        if (state.progress > 0) {
+                            Spacer(Modifier.width(8.dp))
+                            Text("${state.progress}%")
+                        }
+                    }
                 } else {
                     Text(stringResource(R.string.create_archive))
                 }

@@ -118,6 +118,37 @@ func TestPackContextCanceled(t *testing.T) {
 	}
 }
 
+func TestMemoryRoundTrip(t *testing.T) {
+	sources := []MemorySource{
+		{ArchivePath: "hello.txt", Data: []byte("Hello, PFS!")},
+		{ArchivePath: "sub\\nested.go", Data: []byte("package main\n")},
+	}
+	data, err := PackBytes(sources)
+	if err != nil {
+		t.Fatalf("PackBytes: %v", err)
+	}
+	r, err := OpenReaderFromBytes(data)
+	if err != nil {
+		t.Fatalf("OpenReaderFromBytes: %v", err)
+	}
+	defer r.Close()
+	if r.Format() != FormatPF8 {
+		t.Fatalf("format = %d, want PF8", r.Format())
+	}
+	if len(r.Entries()) != 2 {
+		t.Fatalf("entries = %d, want 2", len(r.Entries()))
+	}
+	for i, want := range sources {
+		got, err := r.ReadEntry(&r.Entries()[i])
+		if err != nil {
+			t.Fatalf("ReadEntry %d: %v", i, err)
+		}
+		if !bytes.Equal(got, want.Data) {
+			t.Errorf("entry %d content mismatch", i)
+		}
+	}
+}
+
 func TestExtractAllContextCanceled(t *testing.T) {
 	dir := t.TempDir()
 	srcFile := filepath.Join(dir, "hello.txt")

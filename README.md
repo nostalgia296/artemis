@@ -1,6 +1,6 @@
 # Artemis
 
-PFS archive tool with CLI and Android app.
+PFS archive tool with CLI, Android app, and browser WASM client.
 
 ## CLI
 
@@ -11,6 +11,21 @@ pfs extract *pfs*
 ## pack something into .pfs use `create` command
 pfs create inputdir/
 ```
+
+## Web (WASM)
+
+Browser-side unpack/pack UI (TypeScript + SolidJS + Tailwind).
+
+```bash
+# build wasm payload
+GOOS=js GOARCH=wasm go build -o web/public/artemis.wasm ./cmd/wasm
+cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web/public/
+
+# run frontend
+cd web && npm install && npm run dev
+```
+
+See [web/README.md](web/README.md) for details.
 
 ## Android App
 

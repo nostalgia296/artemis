@@ -1,0 +1,26 @@
+{
+  "name": "artemis-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "wasm": "cd .. && GOOS=js GOARCH=wasm go build -o web/public/artemis.wasm ./cmd/wasm && cp \"$(go env GOROOT)/lib/wasm/wasm_exec.js\" web/public/"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "solid-js": "^1.9.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.4",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.2",
+    "vite-plugin-solid": "^2.11.6"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}

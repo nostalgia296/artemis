@@ -6,7 +6,7 @@
 
 - TypeScript + SolidJS + Tailwind CSS v4
 - Go WASM（`../cmd/wasm` + `../internal/pfs`）
-- fflate（批量导出 ZIP）
+- fflate
 
 ## 开发
 
@@ -32,7 +32,7 @@ npm run preview
 ## 功能
 
 - 打开 PF6 / PF8 归档，列出文件
-- 单文件导出 / 全部（或选中）导出为 ZIP
+- 单文件导出 / 全部（或选中）导出为 ZIP（流式打包；Chromium 可直接写入磁盘）
 - 选择多个文件或文件夹，打包为 PF8 并下载
 
 ## 隐私

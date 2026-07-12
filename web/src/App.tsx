@@ -40,7 +40,7 @@ import {
   pf8ToDisplayPath,
 } from "./lib/format";
 import { getApi, initWasm, type OpenResult, type PackFile, type PfsEntry } from "./lib/wasm";
-import { saveZip, type ZipSource } from "./lib/zip";
+import { saveZip, type PendingZipDelivery, type ZipSource } from "./lib/zip";
 
 type Tab = "extract" | "create";
 type ToastState = { message: string; tone?: "info" | "error" | "success" } | null;
@@ -58,6 +58,8 @@ export default function App() {
   const [wasmReady, setWasmReady] = createSignal(false);
   const [wasmError, setWasmError] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
+  /** When true, UI owns progress (ZIP export etc.); do not poll WASM getProgress. */
+  const [progressOwned, setProgressOwned] = createSignal(false);
   const [progress, setProgress] = createSignal(0);
   const [toast, setToast] = createSignal<ToastState>(null);
 
@@ -67,6 +69,8 @@ export default function App() {
   const [handle, setHandle] = createSignal<number | null>(null);
   const [query, setQuery] = createSignal("");
   const [selected, setSelected] = createSignal<Set<number>>(new Set());
+  /** Large ZIP finished on OPFS — needs a user gesture to share/save out. */
+  const [pendingZip, setPendingZip] = createSignal<PendingZipDelivery | null>(null);
 
   // Create state
   const [packFiles, setPackFiles] = createSignal<SelectedFile[]>([]);
@@ -82,6 +86,42 @@ export default function App() {
     toastTimer = window.setTimeout(() => setToast(null), 2600);
   };
 
+  const discardPendingZip = async () => {
+    const p = pendingZip();
+    if (!p) return;
+    setPendingZip(null);
+    try {
+      await p.discard();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const deliverPendingZip = async () => {
+    const p = pendingZip();
+    if (!p || busy()) return;
+    setBusy(true);
+    try {
+      const how = await p.deliver();
+      setPendingZip(null);
+      const msg =
+        how === "share"
+          ? `已通过系统分享：${p.filename}`
+          : how === "save-as"
+            ? `已流式另存为：${p.filename}`
+            : `已开始下载：${p.filename}`;
+      showToast(msg, "success");
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        showToast("已取消保存", "info");
+      } else {
+        showToast(e instanceof Error ? e.message : String(e), "error");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   onMount(async () => {
     try {
       await initWasm();
@@ -93,6 +133,8 @@ export default function App() {
 
   onCleanup(() => {
     if (toastTimer) window.clearTimeout(toastTimer);
+    const pending = pendingZip();
+    if (pending) void pending.discard().catch(() => undefined);
     const h = handle();
     if (h != null && wasmReady()) {
       try {
@@ -104,8 +146,10 @@ export default function App() {
   });
 
   createEffect(() => {
-    // Poll WASM progress while busy.
-    if (!busy() || !wasmReady()) return;
+    // Poll WASM progress only when UI is not driving the bar itself.
+    // extractEntry/ZIP export never update globalProgress, so polling would
+    // stomp JS progress back to 0 and cause the bar to thrash.
+    if (!busy() || !wasmReady() || progressOwned()) return;
     const id = window.setInterval(() => {
       try {
         setProgress(getApi().getProgress());
@@ -151,6 +195,7 @@ export default function App() {
     setArchiveName(null);
     setQuery("");
     setSelected(new Set<number>());
+    void discardPendingZip();
   };
 
   const onPickArchive = async (file: File | undefined) => {
@@ -219,40 +264,66 @@ export default function App() {
 
     if (indices.length === 0) return;
 
+    // Drop any previous OPFS zip so we do not leak multi-GB temps.
+    await discardPendingZip();
+
     setBusy(true);
+    setProgressOwned(true);
     setProgress(0);
     try {
       const total = indices.length;
-      // Extract one entry at a time and stream into ZIP so we never hold
-      // extractAll() + zipSync() peak memory (all files + full archive).
+      const estimatedBytes = indices.reduce(
+        (sum, idx) => sum + (meta.entries[idx]?.size ?? 0),
+        0,
+      );
+      // One entry at a time: extract → zip chunk → write disk → free entry.
+      // Backpressure in saveZip waits until bytes leave JS heap before next file.
       async function* sources(): AsyncGenerator<ZipSource> {
         for (let i = 0; i < indices.length; i++) {
           const idx = indices[i];
+          const name = meta!.entries[idx].name;
+          // Extract phase: 0–85% by file count (not WASM globalProgress).
+          setProgress(Math.min(85, Math.round((i / Math.max(total, 1)) * 85)));
           const data = await getApi().extractEntry(h!, idx);
-          // Progress: 0–90% for extract+compress, last 10% is finalize/write.
+          yield { name, data };
+          // After streamZip finishes this file (and drains writes), generator
+          // resumes here with no remaining local refs to `data`.
           setProgress(Math.min(90, Math.round(((i + 1) / total) * 90)));
-          yield { name: meta!.entries[idx].name, data };
-          // Drop reference so GC can reclaim each file after it is zipped.
         }
       }
 
       const base = (archiveName() ?? "archive").replace(/\.pfs(\.\d+)?$/i, "");
       const filename = `${base || "extract"}.zip`;
-      const how = await saveZip(sources(), {
+      const result = await saveZip(sources(), {
         filename,
-        level: 1,
+        // store: game assets are often already compressed; lower CPU + peak RAM
+        level: 0,
         total,
+        estimatedBytes,
         onProgress: (done, n) => {
-          setProgress(Math.min(99, Math.round((done / Math.max(n, 1)) * 90)));
+          // Zip phase mirrors extract: keep bar monotonic (never jump backward).
+          setProgress((prev) =>
+            Math.max(prev, Math.min(99, Math.round((done / Math.max(n, 1)) * 95))),
+          );
         },
       });
       setProgress(100);
-      showToast(
-        how === "file-picker"
-          ? `已保存 ZIP（${total} 个文件）`
-          : `已打包下载 ${total} 个文件`,
-        "success",
-      );
+
+      if (result.method === "opfs-ready") {
+        // Large / mobile: ZIP is on disk. User must tap to share/save —
+        // auto createObjectURL of multi-GB freezes Android Chrome.
+        setPendingZip(result.pending);
+        showToast(
+          `ZIP 已写完（${formatBytes(result.pending.size)}），请点「保存到手机」`,
+          "success",
+        );
+      } else if (result.method === "file-picker") {
+        showToast(`已流式保存 ZIP（${total} 个文件 · ${formatBytes(result.size)}）`, "success");
+      } else if (result.method === "opfs-auto") {
+        showToast(`已边写边下载 ZIP（${total} 个文件 · ${formatBytes(result.size)}）`, "success");
+      } else {
+        showToast(`已打包下载 ${total} 个文件 · ${formatBytes(result.size)}`, "success");
+      }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
         showToast("已取消保存", "info");
@@ -261,6 +332,7 @@ export default function App() {
       }
     } finally {
       setBusy(false);
+      setProgressOwned(false);
       setProgress(0);
     }
   };
@@ -297,6 +369,8 @@ export default function App() {
   const createArchive = async () => {
     if (!wasmReady() || packFiles().length === 0) return;
     setBusy(true);
+    // createArchive updates WASM globalProgress; also drive read phase from JS.
+    setProgressOwned(true);
     setProgress(0);
     try {
       const sources: PackFile[] = [];
@@ -307,6 +381,8 @@ export default function App() {
         sources.push({ name: f.path, data });
         setProgress(Math.round(((i + 1) / files.length) * 40));
       }
+      // Pack phase: allow WASM poll for the rest.
+      setProgressOwned(false);
       const out = await getApi().createArchive(sources);
       setProgress(100);
       const name = packName().trim() || "root.pfs";
@@ -316,6 +392,7 @@ export default function App() {
       showToast(e instanceof Error ? e.message : String(e), "error");
     } finally {
       setBusy(false);
+      setProgressOwned(false);
       setProgress(0);
     }
   };
@@ -623,7 +700,38 @@ export default function App() {
         </Show>
       </div>
 
-      <Show when={tab() === "create" && packFiles().length > 0}>
+      <Show when={pendingZip()}>
+        {(p) => (
+          <FloatingBar>
+            <div class="flex items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-[15px] font-semibold">ZIP 已就绪</div>
+                <div class="truncate text-[12px] text-ios-secondary/55">
+                  {p().filename} · {formatBytes(p().size)} · 不会整包进内存
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={busy()}
+                onClick={() => void discardPendingZip()}
+              >
+                丢弃
+              </Button>
+              <Button
+                size="sm"
+                disabled={busy()}
+                loading={busy()}
+                onClick={() => void deliverPendingZip()}
+              >
+                保存到手机
+              </Button>
+            </div>
+          </FloatingBar>
+        )}
+      </Show>
+
+      <Show when={!pendingZip() && tab() === "create" && packFiles().length > 0}>
         <FloatingBar>
           <div class="flex items-center gap-3">
             <div class="min-w-0 flex-1">

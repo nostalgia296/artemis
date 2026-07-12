@@ -6,7 +6,7 @@
 
 - TypeScript + SolidJS + Tailwind CSS v4
 - Go WASM（`../cmd/wasm` + `../internal/pfs`）
-- fflate
+- fflate（流式 ZIP）
 
 ## 开发
 
@@ -32,7 +32,14 @@ npm run preview
 ## 功能
 
 - 打开 PF6 / PF8 归档，列出文件
-- 单文件导出 / 全部（或选中）导出为 ZIP（流式打包；Chromium 可直接写入磁盘）
+- 单文件导出 / 全部（或选中）导出为 ZIP
+  - 桌面 Chromium：Save As 直接流式写用户磁盘
+  - Android / 移动 Chromium：跳过 Save As（SAF 常留下 0 KB 占位文件），流式写入 OPFS
+  - 大体积 ZIP（手机 / >64MB）：**禁止**整包进内存 Blob / `createObjectURL`（会卡死标签页）
+    - 写完后显示「保存到手机」→ 系统分享，或流式另存为（按 1MB 切片拷贝）
+  - 小体积：OPFS 临时文件自动触发下载
+  - 无 OPFS 且预估 >48MB：直接拒绝内存回退，避免卡死
+  - 导出进度由前端按文件数驱动，不再与 WASM `getProgress` 抢进度条
 - 选择多个文件或文件夹，打包为 PF8 并下载
 
 ## 隐私

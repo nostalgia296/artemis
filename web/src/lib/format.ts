@@ -27,7 +27,11 @@ export function dirname(path: string): string {
   return idx >= 0 ? normalized.slice(0, idx) : "";
 }
 
-export function downloadBlob(blob: Blob, filename: string) {
+export function downloadBlob(
+  blob: Blob,
+  filename: string,
+  opts?: { revokeMs?: number },
+) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -37,7 +41,9 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.click();
   a.remove();
   // Revoke after a tick so Safari can start the download.
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  // Large disk-backed Files may need longer before the download manager copies.
+  const revokeMs = opts?.revokeMs ?? 1500;
+  setTimeout(() => URL.revokeObjectURL(url), revokeMs);
 }
 
 export function downloadBytes(data: Uint8Array, filename: string, mime = "application/octet-stream") {

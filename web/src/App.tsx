@@ -530,7 +530,7 @@ export default function App() {
                 输出文件名
               </label>
               <input
-                class="mt-2 h-11 w-full rounded-[12px] bg-ios-fill px-3 text-[16px] outline-none focus:ring-2 focus:ring-ios-blue/30"
+                class="mt-2 h-11 w-full rounded-[12px] border border-ios-separator/70 bg-ios-card px-3 text-[16px] outline-none focus:border-ios-blue/60 focus:ring-2 focus:ring-ios-blue/15 transition-all duration-200"
                 value={packName()}
                 onInput={(e) => setPackName(e.currentTarget.value)}
                 placeholder="root.pfs"

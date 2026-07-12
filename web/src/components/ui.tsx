@@ -91,7 +91,7 @@ export function ListRow(props: {
       onClick={props.onClick}
     >
       <Show when={props.leading}>
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-ios-fill text-ios-blue">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-ios-blue/10 text-ios-blue">
           {props.leading}
         </div>
       </Show>
@@ -172,21 +172,24 @@ export function SegmentedControl<T extends string>(props: {
   onChange: (v: T) => void;
 }) {
   return (
-    <div class="grid grid-cols-2 rounded-[12px] bg-ios-fill p-1">
+    <div class="flex justify-center gap-12 border-b border-ios-separator/40 pb-px">
       {props.options.map((opt) => {
         const active = () => props.value === opt.value;
         return (
           <button
             type="button"
             class={[
-              "rounded-[10px] py-2 text-[14px] font-semibold transition",
+              "relative pb-3 text-[16px] font-semibold transition-colors duration-200 cursor-pointer focus:outline-none",
               active()
-                ? "bg-ios-card text-ios-label shadow-sm"
-                : "text-ios-secondary/70",
+                ? "text-ios-blue"
+                : "text-ios-secondary/60 hover:text-ios-label",
             ].join(" ")}
             onClick={() => props.onChange(opt.value)}
           >
-            {opt.label}
+            <span class="px-1">{opt.label}</span>
+            <Show when={active()}>
+              <span class="absolute bottom-0 left-0 right-0 h-[3px] rounded-full bg-ios-blue animate-tab-line" />
+            </Show>
           </button>
         );
       })}
@@ -211,7 +214,7 @@ export function SearchField(props: {
         type="search"
         value={props.value}
         placeholder={props.placeholder ?? "搜索"}
-        class="h-10 w-full rounded-[12px] border-0 bg-ios-fill pl-9 pr-3 text-[16px] outline-none placeholder:text-ios-secondary/40 focus:ring-2 focus:ring-ios-blue/30"
+        class="h-10 w-full rounded-[12px] border border-ios-separator/70 bg-ios-card pl-9 pr-3 text-[16px] outline-none placeholder:text-ios-secondary/40 focus:border-ios-blue/60 focus:ring-2 focus:ring-ios-blue/15 transition-all duration-200"
         onInput={(e) => props.onInput(e.currentTarget.value)}
       />
     </div>
@@ -247,7 +250,7 @@ export function EmptyState(props: {
   return (
     <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
       <Show when={props.icon}>
-        <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-[20px] bg-ios-fill text-ios-blue">
+        <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-[20px] bg-ios-blue/10 text-ios-blue">
           {props.icon}
         </div>
       </Show>

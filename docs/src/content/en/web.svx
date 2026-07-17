@@ -1,0 +1,27 @@
+---
+title: Web (WASM) Client
+description: Browser-side unpack/pack UI.
+---
+
+# Web Client
+
+The Artemis web client provides a graphical interface for packing and unpacking archives directly in your browser. It's built with TypeScript, SolidJS, and Tailwind CSS, and uses WebAssembly (WASM) for high-performance archive processing.
+
+## Build the WASM Payload
+
+First, compile the Go code into WebAssembly:
+
+```bash
+GOOS=js GOARCH=wasm go build -o web/public/artemis.wasm ./cmd/wasm
+cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web/public/
+```
+
+## Run the Frontend
+
+Next, install dependencies and run the Vite development server:
+
+```bash
+cd web
+npm install
+npm run dev
+```

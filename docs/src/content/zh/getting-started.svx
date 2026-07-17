@@ -1,0 +1,22 @@
+---
+title: 简介
+description: 欢迎使用 Artemis 文档。
+---
+
+# 简介
+
+欢迎使用 **Artemis**。这是一款功能强大的 PFS 归档工具，提供了命令行界面 (CLI)、Android 应用以及基于 WebAssembly 的浏览器客户端。
+
+## Artemis 是什么？
+
+Artemis 旨在跨多个平台提供无缝的 PFS 归档文件打包与解包体验。无论您倾向于使用终端、Android 设备还是直接在浏览器中操作，Artemis 都能满足您的需求。
+
+## 核心特性
+
+- **CLI 工具**: 快速且直观的命令行界面，支持提取和创建 `.pfs` 归档。
+- **Web (WASM) 客户端**: 基于 TypeScript、SolidJS 和 Tailwind CSS 构建的浏览器端 UI。通过 WebAssembly 在本地运行，无需服务器端处理文件。
+- **Android 应用**: 通过 JNI 结合 Go 语言强大功能的移动端原生应用。
+
+## 下一步
+
+请前往 [安装](/zh/docs/installation) 页面了解如何编译和运行各项组件。

@@ -1,0 +1,27 @@
+---
+title: Web 客户端
+description: 基于浏览器的解包/打包 UI。
+---
+
+# Web (WASM) 客户端
+
+Artemis Web 客户端提供了一个图形化界面，可以直接在浏览器中进行归档的打包和解包。它基于 TypeScript、SolidJS 和 Tailwind CSS 构建，并利用 WebAssembly (WASM) 提供高性能的文件处理能力。
+
+## 构建 WASM 产物
+
+首先，将 Go 代码编译为 WebAssembly：
+
+```bash
+GOOS=js GOARCH=wasm go build -o web/public/artemis.wasm ./cmd/wasm
+cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web/public/
+```
+
+## 运行前端
+
+接着，安装依赖并启动 Vite 开发服务器：
+
+```bash
+cd web
+npm install
+npm run dev
+```

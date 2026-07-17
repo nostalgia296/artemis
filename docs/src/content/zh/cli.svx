@@ -1,0 +1,32 @@
+---
+title: CLI 使用指南
+description: Artemis 命令行工具使用说明。
+---
+
+# CLI 工具
+
+Artemis CLI 让您可以通过终端高效地提取和创建 `.pfs` 归档。
+
+## 构建
+
+确保您已安装 Go，然后运行：
+
+```bash
+go build -o pfs ./cmd/pfs
+```
+
+## 提取归档
+
+要从 PFS 归档 (例如 `xx.pfs`、`xx.pfs.001` 等) 中提取文件，请使用 `extract` 命令：
+
+```bash
+pfs extract *pfs*
+```
+
+## 创建归档
+
+要将目录打包为 `.pfs` 归档，请使用 `create` 命令：
+
+```bash
+pfs create inputdir/
+```

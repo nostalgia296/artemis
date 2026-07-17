@@ -13,7 +13,6 @@ android/local.properties
 
 # Claude Code
 .claude/
-docs/
 
 # Web frontend
 web/node_modules/

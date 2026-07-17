@@ -1,0 +1,33 @@
+---
+title: Android App
+description: Running Artemis on Android.
+---
+
+# Android App
+
+The Artemis Android application allows you to manage PFS archives on the go. It uses Go compiled as a shared library via JNI.
+
+## Prerequisites
+
+- **Android SDK**: compileSdk 35
+- **Android NDK**: r29+
+- **Go**: 1.26+
+
+## Build Instructions
+
+1. **Cross-compile Go shared library**:
+
+```bash
+./build-android.sh
+```
+
+2. **Build the APK**:
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+The APK will be generated at `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+> **Note:** If you are working in a non-Termux environment, please remove `android.aapt2FromMavenOverride=/data/data/com.termux/files/usr/opt/android-sdk/build-tools/35.0.0/aapt2` from your Gradle configuration.

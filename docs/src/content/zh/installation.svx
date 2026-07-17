@@ -1,0 +1,22 @@
+---
+title: 安装与编译
+description: 如何在本地编译并运行 Artemis。
+---
+
+# 安装与编译
+
+本指南将指导您构建 Artemis 的各个组件。
+
+## 必备环境
+
+- **Go**: 建议 1.26 或更高版本。
+- **Node.js**: 用于构建 Web 客户端。
+- **Android SDK & NDK**: 用于构建 Android 应用 (compileSdk 35, NDK r29+)。
+
+## 快速构建指南
+
+- **CLI**: `go build -o pfs ./cmd/pfs`
+- **Web 客户端**: `GOOS=js GOARCH=wasm go build -o web/public/artemis.wasm ./cmd/wasm`
+- **Android**: `./build-android.sh`
+
+如需详细指引，请参阅各个组件的专属文档：[CLI](/zh/docs/cli)、[Web](/zh/docs/web) 以及 [Android](/zh/docs/android)。

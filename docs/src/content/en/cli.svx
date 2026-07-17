@@ -1,0 +1,32 @@
+---
+title: CLI Usage
+description: Using the Artemis command-line interface.
+---
+
+# CLI Tool
+
+The Artemis CLI allows you to extract and create `.pfs` archives efficiently from your terminal.
+
+## Build
+
+Ensure you have Go installed, then run:
+
+```bash
+go build -o pfs ./cmd/pfs
+```
+
+## Extracting Archives
+
+To extract files from PFS archives (like `xx.pfs`, `xx.pfs.001`, etc.), use the `extract` command:
+
+```bash
+pfs extract *pfs*
+```
+
+## Creating Archives
+
+To pack a directory into a `.pfs` archive, use the `create` command:
+
+```bash
+pfs create inputdir/
+```

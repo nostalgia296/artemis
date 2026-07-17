@@ -1,0 +1,22 @@
+---
+title: Introduction
+description: Welcome to the Artemis documentation.
+---
+
+# Introduction
+
+Welcome to **Artemis**, a versatile PFS archive tool designed with a CLI, Android app, and browser WASM client.
+
+## What is Artemis?
+
+Artemis provides seamless utilities for packing and unpacking PFS archive files across multiple platforms. Whether you prefer the command line, an Android device, or directly within your web browser, Artemis has you covered.
+
+## Core Features
+
+- **CLI Tool**: Fast and straightforward command-line interface for extracting and creating `.pfs` archives.
+- **Web (WASM) Client**: A browser-side UI built with TypeScript, SolidJS, and Tailwind CSS. It runs locally via WebAssembly without needing server-side processing for archives.
+- **Android App**: A native mobile application bridging Go's power to your Android device via JNI.
+
+## Next Steps
+
+Head over to the [Installation](/docs/installation) page to learn how to compile and run the CLI, Web, and Android clients.

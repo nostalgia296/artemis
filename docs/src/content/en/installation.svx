@@ -1,0 +1,22 @@
+---
+title: Installation
+description: How to build and run Artemis locally.
+---
+
+# Installation & Build
+
+This guide will walk you through building the various components of Artemis.
+
+## Prerequisites
+
+- **Go**: 1.26 or higher is recommended.
+- **Node.js**: For building the web client.
+- **Android SDK & NDK**: For building the Android app (compileSdk 35, NDK r29+).
+
+## Quick Build Guide
+
+- **CLI**: `go build -o pfs ./cmd/pfs`
+- **Web Client**: `GOOS=js GOARCH=wasm go build -o web/public/artemis.wasm ./cmd/wasm`
+- **Android**: `./build-android.sh`
+
+For detailed instructions, see the specific documentation pages for [CLI](/docs/cli), [Web](/docs/web), and [Android](/docs/android).

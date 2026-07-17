@@ -1,0 +1,33 @@
+---
+title: Android 应用
+description: 在 Android 上运行 Artemis。
+---
+
+# Android 应用
+
+Artemis Android 应用程序让您能够随时随地管理 PFS 归档。它通过 JNI 将 Go 编译为共享库并调用其核心逻辑。
+
+## 必备环境
+
+- **Android SDK**: compileSdk 35
+- **Android NDK**: r29+
+- **Go**: 1.26+
+
+## 编译指南
+
+1. **交叉编译 Go 共享库**:
+
+```bash
+./build-android.sh
+```
+
+2. **构建 APK**:
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+编译完成的 APK 将会生成在 `android/app/build/outputs/apk/debug/app-debug.apk`。
+
+> **注意**: 如果您不是在 Termux 环境中开发，请在 Gradle 配置中移除 `android.aapt2FromMavenOverride=/data/data/com.termux/files/usr/opt/android-sdk/build-tools/35.0.0/aapt2`。

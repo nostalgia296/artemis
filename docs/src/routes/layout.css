@@ -1,0 +1,97 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+	--font-sans:
+		-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
+		'Segoe UI', system-ui, sans-serif;
+	--color-ios-blue: #007aff;
+	--color-ios-blue-press: #0066d6;
+	--color-ios-green: #34c759;
+	--color-ios-red: #ff3b30;
+	--color-ios-orange: #ff9500;
+	--color-ios-gray: #8e8e93;
+	--color-ios-gray2: #aeaeb2;
+	--color-ios-gray3: #c7c7cc;
+	--color-ios-gray4: #d1d1d6;
+	--color-ios-gray5: #e5e5ea;
+	--color-ios-gray6: #f2f2f7;
+	--color-ios-bg: #f2f2f7;
+	--color-ios-card: #ffffff;
+	--color-ios-label: #000000;
+	--color-ios-secondary: #3c3c43;
+	--color-ios-separator: rgba(60, 60, 67, 0.12);
+	--color-ios-fill: rgba(120, 120, 128, 0.12);
+	--color-ios-fill2: rgba(120, 120, 128, 0.16);
+
+	--color-primary-500: var(--color-ios-blue);
+	--color-primary-600: var(--color-ios-blue-press);
+}
+
+@layer base {
+	:root {
+		color-scheme: light dark;
+	}
+
+	html,
+	body {
+		min-height: 100%;
+	}
+
+	body {
+		margin: 0;
+		font-family: var(--font-sans);
+		background: var(--color-ios-bg);
+		color: var(--color-ios-label);
+		-webkit-tap-highlight-color: transparent;
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+		transition:
+			background-color 0.3s ease,
+			color 0.3s ease;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root:not(.light) {
+			--color-ios-bg: #000000;
+			--color-ios-card: #1c1c1e;
+			--color-ios-label: #ffffff;
+			--color-ios-secondary: #ebebf5;
+			--color-ios-separator: rgba(84, 84, 88, 0.65);
+			--color-ios-fill: rgba(120, 120, 128, 0.24);
+			--color-ios-fill2: rgba(120, 120, 128, 0.32);
+			--color-ios-gray5: #2c2c2e;
+			--color-ios-gray6: #1c1c1e;
+		}
+	}
+
+	.dark {
+		--color-ios-bg: #000000;
+		--color-ios-card: #1c1c1e;
+		--color-ios-label: #ffffff;
+		--color-ios-secondary: #ebebf5;
+		--color-ios-separator: rgba(84, 84, 88, 0.65);
+		--color-ios-fill: rgba(120, 120, 128, 0.24);
+		--color-ios-fill2: rgba(120, 120, 128, 0.32);
+		--color-ios-gray5: #2c2c2e;
+		--color-ios-gray6: #1c1c1e;
+	}
+}
+
+@layer utilities {
+	.ios-blur {
+		backdrop-filter: saturate(180%) blur(20px);
+		-webkit-backdrop-filter: saturate(180%) blur(20px);
+		background-color: rgba(255, 255, 255, 0.7);
+	}
+
+	.dark .ios-blur {
+		background-color: rgba(28, 28, 30, 0.7);
+	}
+
+	.prose-custom {
+		@apply prose max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-ios-label prose-p:text-ios-label prose-a:text-ios-blue prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-ios-blue prose-blockquote:text-ios-secondary prose-strong:text-ios-label prose-code:break-words prose-code:rounded-md prose-code:bg-ios-blue/10 dark:prose-code:bg-ios-blue/20 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-ios-blue prose-code:before:content-none prose-code:after:content-none prose-pre:border prose-pre:border-ios-separator prose-pre:bg-ios-card prose-pre:text-ios-label prose-ol:text-ios-label prose-ul:text-ios-label;
+	}
+}

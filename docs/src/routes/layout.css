@@ -7,6 +7,9 @@
 	--font-sans:
 		-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue',
 		'Segoe UI', system-ui, sans-serif;
+	--font-mono:
+		'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+		'Courier New', monospace;
 	--color-ios-blue: #007aff;
 	--color-ios-blue-press: #0066d6;
 	--color-ios-green: #34c759;
@@ -91,7 +94,13 @@
 		background-color: rgba(28, 28, 30, 0.7);
 	}
 
+	@media (prefers-color-scheme: dark) {
+		:root:not(.light) .ios-blur {
+			background-color: rgba(28, 28, 30, 0.7);
+		}
+	}
+
 	.prose-custom {
-		@apply prose max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-ios-label prose-p:text-ios-label prose-a:text-ios-blue prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-ios-blue prose-blockquote:text-ios-secondary prose-strong:text-ios-label prose-code:break-words prose-code:rounded-md prose-code:bg-ios-blue/10 dark:prose-code:bg-ios-blue/20 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-ios-blue prose-code:before:content-none prose-code:after:content-none prose-pre:border prose-pre:border-ios-separator prose-pre:bg-ios-card prose-pre:text-ios-label prose-ol:text-ios-label prose-ul:text-ios-label;
+		@apply prose max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-ios-label prose-p:text-ios-label prose-a:text-ios-blue prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-ios-blue prose-blockquote:text-ios-secondary prose-strong:text-ios-label prose-code:font-mono prose-code:break-words prose-code:rounded-md prose-code:bg-ios-blue/10 dark:prose-code:bg-ios-blue/20 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-ios-blue prose-code:before:content-none prose-code:after:content-none prose-pre:font-mono prose-pre:border prose-pre:border-ios-separator prose-pre:bg-ios-card prose-pre:text-ios-label prose-ol:text-ios-label prose-ul:text-ios-label;
 	}
 }

@@ -2,27 +2,14 @@
 	import './layout.css';
 	import { config } from '$lib/docs.config';
 	import { page } from '$app/stores';
+	import { localizePath } from '$lib/i18n';
+	import { toggleTheme } from '$lib/theme';
+	import Search from '$lib/components/docs/Search.svelte';
 
 	let { children } = $props();
 
 	let currentLang = $derived($page.params.lang || config.defaultLocale);
 	let locale = $derived(config.locales[currentLang] || config.locales[config.defaultLocale]);
-
-	function toggleTheme() {
-		if (typeof window !== 'undefined') {
-			const isDark = document.documentElement.classList.toggle('dark');
-			localStorage.theme = isDark ? 'dark' : 'light';
-		}
-	}
-
-	function switchLanguage(newLang: string) {
-		const currentPath = $page.url.pathname;
-		if (newLang === config.defaultLocale) {
-			return currentPath.replace(`/${currentLang}`, '') || '/';
-		} else {
-			return `/${newLang}${currentPath.replace(`/${currentLang}`, '')}`;
-		}
-	}
 </script>
 
 <div class="flex min-h-screen flex-col selection:bg-ios-blue selection:text-white">
@@ -51,32 +38,14 @@
 				</nav>
 			</div>
 
-			<div class="flex items-center gap-4">
-				<div class="relative hidden md:block">
-					<div
-						class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-ios-gray"
-					>
-						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-							><path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-							/></svg
-						>
-					</div>
-					<input
-						type="text"
-						class="block w-64 rounded-xl border-0 bg-ios-fill py-1.5 pr-3 pl-9 text-ios-label transition-colors outline-none placeholder:text-ios-gray focus:bg-ios-fill2 focus:ring-2 focus:ring-ios-blue sm:text-sm sm:leading-6"
-						placeholder={locale.ui.searchPlaceholder}
-					/>
-				</div>
+			<div class="flex items-center gap-3 sm:gap-4">
+				<Search {locale} lang={currentLang} />
 
 				<!-- Language Switcher -->
-				<div class="ml-2 flex items-center gap-2 border-l border-ios-separator pl-4">
+				<div class="flex items-center gap-2 border-l border-ios-separator pl-3 sm:pl-4">
 					{#each Object.keys(config.locales) as langKey}
 						<a
-							href={switchLanguage(langKey)}
+							href={localizePath($page.url.pathname, langKey)}
 							class="rounded-md px-2 py-1 text-xs font-medium transition-colors {currentLang ===
 							langKey
 								? 'bg-ios-fill text-ios-label'

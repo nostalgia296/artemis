@@ -30,6 +30,8 @@ export interface LocaleConfig {
 		justShipped: string;
 		tocComingSoon: string;
 		searchPlaceholder: string;
+		searchNoResults: string;
+		searchCancel: string;
 		menu?: string;
 	};
 }
@@ -58,6 +60,8 @@ export const config: DocsConfig = {
 				justShipped: 'Just shipped v1.0',
 				tocComingSoon: 'TOC coming soon',
 				searchPlaceholder: 'Search...',
+				searchNoResults: 'No results found',
+				searchCancel: 'Cancel',
 				menu: 'Menu'
 			},
 			nav: [
@@ -95,6 +99,8 @@ export const config: DocsConfig = {
 				justShipped: 'v1.0 现已发布',
 				tocComingSoon: '目录即将推出',
 				searchPlaceholder: '搜索文档...',
+				searchNoResults: '未找到结果',
+				searchCancel: '取消',
 				menu: '菜单'
 			},
 			nav: [

@@ -148,7 +148,9 @@
 							onclick={() => closeAll()}
 						>
 							<div class="text-sm font-medium">{doc.title}</div>
-							{#if doc.description}
+							{#if doc.excerpt}
+								<div class="mt-0.5 line-clamp-2 text-xs text-ios-secondary">{doc.excerpt}</div>
+							{:else if doc.description}
 								<div class="mt-0.5 line-clamp-1 text-xs text-ios-secondary">{doc.description}</div>
 							{/if}
 						</a>
@@ -227,7 +229,9 @@
 								onclick={() => closeAll()}
 							>
 								<div class="text-sm font-medium">{doc.title}</div>
-								{#if doc.description}
+								{#if doc.excerpt}
+									<div class="mt-0.5 line-clamp-2 text-xs text-ios-secondary">{doc.excerpt}</div>
+								{:else if doc.description}
 									<div class="mt-0.5 text-xs text-ios-secondary">{doc.description}</div>
 								{/if}
 							</a>

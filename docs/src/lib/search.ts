@@ -7,6 +7,30 @@ export interface SearchDoc {
 	title: string;
 	description: string;
 	body: string;
+	excerpt?: string;
+}
+
+function generateExcerpt(body: string, terms: string[]): string {
+	const lowerBody = body.toLowerCase();
+	let earliestIndex = -1;
+
+	for (const term of terms) {
+		const index = lowerBody.indexOf(term);
+		if (index !== -1 && (earliestIndex === -1 || index < earliestIndex)) {
+			earliestIndex = index;
+		}
+	}
+
+	if (earliestIndex === -1) return '';
+
+	const start = Math.max(0, earliestIndex - 30);
+	const end = Math.min(body.length, earliestIndex + 70);
+	let excerpt = body.substring(start, end).replace(/\s+/g, ' ').trim();
+	
+	if (start > 0) excerpt = '...' + excerpt;
+	if (end < body.length) excerpt = excerpt + '...';
+
+	return excerpt;
 }
 
 const modules = import.meta.glob('../content/**/*.{svx,md}', {
@@ -99,7 +123,12 @@ export function searchDocs(query: string, lang: string, limit = 8): SearchDoc[] 
 				if (body.includes(term)) score += 1;
 			}
 
-			return { doc, score };
+			let excerpt = '';
+			if (score > 0) {
+				excerpt = generateExcerpt(doc.body, terms);
+			}
+
+			return { doc: { ...doc, excerpt }, score };
 		})
 		.filter((entry) => entry.score > 0)
 		.sort((a, b) => b.score - a.score || a.doc.title.localeCompare(b.doc.title))

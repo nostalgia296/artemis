@@ -47,7 +47,7 @@ export const config: DocsConfig = {
 	socialLinks: [{ icon: 'github', link: 'https://github.com/nostalgia296/artemis' }],
 	locales: {
 		en: {
-			title: 'Artemis Docs',
+			title: 'Artemis',
 			description: 'Cross-platform PFS archive tool.',
 			ui: {
 				search: 'Search',
@@ -86,7 +86,7 @@ export const config: DocsConfig = {
 			]
 		},
 		zh: {
-			title: 'Artemis 文档',
+			title: 'Artemis',
 			description: '跨平台 PFS 归档工具。',
 			ui: {
 				search: '搜索',

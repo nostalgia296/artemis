@@ -25,7 +25,8 @@ export default defineConfig({
 		sveltekit({
 			compilerOptions: {
 				runes: ({ filename }) =>
-					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
+					filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
+				warningFilter: (warning) => warning.code !== 'script_context_deprecated'
 			},
 			adapter: adapter(),
 			preprocess: [

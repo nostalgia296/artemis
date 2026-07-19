@@ -122,6 +122,7 @@
 			<button
 				class="rounded-full bg-ios-fill p-2 text-ios-secondary transition-colors hover:bg-ios-fill2 hover:text-ios-label"
 				onclick={() => (isMobileTocOpen = false)}
+				aria-label="Close"
 			>
 				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

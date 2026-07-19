@@ -1,5 +1,6 @@
 <script lang="ts">
 	let { data } = $props();
+	let Content = $derived(data.content);
 </script>
 
 <svelte:head>
@@ -7,4 +8,4 @@
 </svelte:head>
 
 <!-- We render the compiled markdown component dynamically -->
-<svelte:component this={data.content} />
+<Content />

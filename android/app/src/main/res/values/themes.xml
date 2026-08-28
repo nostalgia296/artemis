@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Artemis" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Artemis.SplashScreen" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FEF7FF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.Artemis</item>
+    </style>
 </resources>
